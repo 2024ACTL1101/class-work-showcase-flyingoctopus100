@@ -81,7 +81,12 @@ $$
 $$
 
 ```r
-#fill the code
+df$AMD_dr <- NA
+df$GSPC_dr <- NA
+for (i in 2:nrow(df)) {
+df$AMD_dr[i] <- ((df$AMD[i]-df$AMD[i-1])/df$AMD[i-1])
+df$GSPC_dr[i] <- ((df$GSPC[i]-df$GSPC[i-1])/df$GSPC[i-1])
+}
 ```
 
 - **Calculate Risk-Free Rate**: Calculate the daily risk-free rate by conversion of annual risk-free Rate. This conversion accounts for the compounding effect over the days of the year and is calculated using the formula:
@@ -92,6 +97,9 @@ $$
 
 ```r
 #fill the code
+df$Daily_RF <- NA
+for (i in 1:nrow(df)){
+df$Daily_RF[i] <- (((1+df$RF[i]/100)ˆ(1/360))-1)
 ```
 
 
@@ -99,6 +107,12 @@ $$
 
 ```r
 #fill the code
+df$AMD_excess <- NA
+df$GSPC_excess <- NA
+for(i in 2:nrow(df)){
+df$AMD_excess[i] <- df$AMD_dr[i]-df$Daily_RF[i]
+df$GSPC_excess[i] <- df$GSPC_dr[i]-df$Daily_RF[i]
+}
 ```
 
 
@@ -106,6 +120,8 @@ $$
 
 ```r
 #fill the code
+capm_model <- lm(AMD_excess ~ GSPC_excess, data = df)
+summary(capm_model)
 ```
 
 
@@ -113,7 +129,7 @@ $$
 
 What is your \(\beta\)? Is AMD more volatile or less volatile than the market?
 
-**Answer:**
+**Answer:** From the summary of the CAPM model, AMD’s β can be calculated to be 1.5699987. This showcases that for every 1% increase in the excess return of the S&P 500, the excess return of AMD is expected to rise by approximately 1.57%. Similarly, for every 1% decrease in the S&P 500, the AMD share price decreased by an average of 1.57%. This indicates that AMD fluctuates by a greater margin in response to market movements and is therefore more volatile than the market. Since investing into AMD carries greater risk compared to investing in the S&P 500, there is also expectation of greater returns. As a result, investors who are risk averse should opt to invest in the S&P 500, whilst those who are risk tolerant should purchase AMD shares.
 
 
 #### Plotting the CAPM Line
@@ -121,15 +137,33 @@ Plot the scatter plot of AMD vs. S&P 500 excess returns and add the CAPM regress
 
 ```r
 #fill the code
+library(ggplot2)
+ggplot(df, aes(x = GSPC_excess, y = AMD_excess)) +
+geom_point() +
+geom_smooth(method = 'lm', se = TRUE) +
+labs(title = "CAPM Analysis: AMD vs S&P 500",
+x = "S&P 500 Excess Return",
+y = "AMD Excess Return")
 ```
 
 ### Step 3: Predictions Interval
 Suppose the current risk-free rate is 5.0%, and the annual expected return for the S&P 500 is 13.3%. Determine a 90% prediction interval for AMD's annual expected return.
 
 
-
-**Answer:**
-
 ```r
 #fill the code
+current_rate <- 0.05
+expected_return <- 0.133
+daily_error <- summary(capm_model)$sigma
+annual_error <- daily_error *sqrt(252)
+beta <- coef(capm_model)[2]
+amd_returns <- current_rate + beta*(expected_return-current_rate)
+z_score <- qnorm(1-0.1/2)
+lower_bound <- amd_returns-z_score * annual_error
+upper_bound <-amd_returns + z_score * annual_error
+lower_bound <- format(lower_bound, digits = 3)
+upper_bound <- format(upper_bound, digits = 3)
 ```
+
+The expected annual return of 18.03% (2dp) suggests that AMD is projected to perform well in the market. However, a 90% prediction interval between -4.9% and 8.5% suggests that the expected returns will fall within this range 90% of the time. This broad interval demonstrates AMD’s significant stock volatility, further evidenced by its β value of 1.57. From an investors perspective, purchasing AMD stock is followed by a high level of risk and would best suit risk-tolerant investors.
+

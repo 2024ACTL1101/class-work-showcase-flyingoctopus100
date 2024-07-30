@@ -47,6 +47,18 @@ Plot the closing prices over time to visualize the price movement.
 plot(amd_df$date, amd_df$close,'l')
 ```
 
+### Step 3: Customize Trading Period
+- Define a trading period you wanted in the past five years 
+```r
+# Fill your code here
+# Define the start and end dates for the trading period
+start_date <- as.Date("2020-01-02")
+end_date <- as.Date("2021-01-04")
+
+# Filter the DataFrame to include only data within the specified trading period
+amd_df <- amd_df[amd_df$date >= start_date & amd_df$date <= end_date, ]
+```
+
 ### Step 2: Trading Algorithm
 Implement the trading algorithm as per the instructions. You should initialize necessary variables, and loop through the dataframe to execute trades based on the set conditions.
 
@@ -72,14 +84,43 @@ accumulated_shares <- 0
 
 for (i in 1:nrow(amd_df)) {
 # Fill your code here
-}
-```
+# Initialize columns for trade type, cost/proceeds, and accumulated shares in amd_df
+amd_df$trade_type <- NA
+amd_df$costs_proceeds <- NA #Corrected column name
+amd_df$accumulated_shares <- 0 #Initialize if needed for tracking
 
+# Initialize variables for trading logic
+previous_price <- 0
+share_size <- 100
+accumulated_shares <- 0
 
-### Step 3: Customize Trading Period
-- Define a trading period you wanted in the past five years 
-```r
 # Fill your code here
+for (i in 1:nrow(amd_df)) {
+  current_price <- amd_df$close[i]
+  previous_price <- amd_df$close[i-1]
+  if(i == 1) {
+    # Buying shares on the first day and when previous price > current price
+      amd_df$trade_type[i] <- "buy"
+      amd_df$costs_proceeds[i] <- (-current_price) * share_size
+      accumulated_shares <- accumulated_shares + share_size
+  } else if (i == nrow(amd_df)) {
+      # Sell shares on the last day
+      amd_df$trade_type[i] <- "sell"
+      amd_df$costs_proceeds[i] <- accumulated_shares * current_price
+      accumulated_shares <- 0
+  } else {
+      if (current_price < previous_price) {
+      # Buy if current price is less than previous price
+      amd_df$trade_type[i] <- "buy"
+      amd_df$costs_proceeds[i] <- (-current_price) * share_size
+      accumulated_shares <- accumulated_shares + share_size
+    }
+  }
+  
+  amd_df$accumulated_shares[i] <- accumulated_shares
+}
+print(amd_df)
+}
 ```
 
 
@@ -92,6 +133,25 @@ After running your algorithm, check if the trades were executed as expected. Cal
 
 ```r
 # Fill your code here
+total_capital <- 0
+total_PL <- 0
+for (i in 1:nrow(amd_df)) {
+  #Filter through the data and calculate total cost of shares
+  if (!is.na(amd_df$trade_type[i]) && amd_df$trade_type[i] == "buy") {
+    total_capital <- total_capital + amd_df$costs_proceeds[i]
+  }
+}
+
+#Total profit loss calculation
+total_PL <- total_capital + amd_df$costs_proceeds[nrow(amd_df)]
+
+#Applying the ROI formula
+ROI = (total_PL / -total_capital) * 100
+
+#Print the results
+cat("ROI:", ROI, "\n")
+cat("Total investment:", total_capital, "\n")
+cat("Total profit/loss:", total_PL, "\n")
 ```
 
 ### Step 5: Profit-Taking Strategy or Stop-Loss Mechanisum (Choose 1)
@@ -101,6 +161,56 @@ After running your algorithm, check if the trades were executed as expected. Cal
 
 ```r
 # Fill your code here
+# Initialize columns for trade type, cost/proceeds, and accumulated shares in amd_df
+amd_df$trade_type <- NA
+amd_df$costs_proceeds <- NA #Corrected column name
+amd_df$accumulated_shares <- 0 #Initialize if needed for tracking
+
+# Initialize variables for trading logic
+previous_price <- 0
+share_size <- 100
+accumulated_shares <- 0
+
+total_cost_shares <- 0
+total_purchased_shares <- 0
+
+for (i in 1:nrow(amd_df)) {
+  current_price <- amd_df$close[i]
+  previous_price <- amd_df$close[i-1]
+  if(i == 1 || previous_price > current_price) {  
+    # Buying shares on the first day and when previous price > current price
+      amd_df$trade_type[i] <- "buy"
+      amd_df$costs_proceeds[i] <- (-current_price) * share_size
+      accumulated_shares <- accumulated_shares + share_size
+      total_cost_shares <- total_cost_shares - amd_df$costs_proceeds[i]
+  } else if (i == nrow(amd_df)) { 
+    # Sell on the last day of trading
+      amd_df$trade_type[i] <- "sell"
+      amd_df$costs_proceeds[i] <- accumulated_shares * current_price
+      accumulated_shares <- 0
+  }
+  
+  #Condition for calculating average purchase price
+  if (accumulated_shares > 0) {
+    avg_purchase_price <- total_cost_shares/accumulated_shares
+  } else {
+    avg_purchase_price <- 0
+  }
+  
+  #Profit-taking conditions
+  profit_threshold <- avg_purchase_price*1.60
+  
+  if(current_price >= profit_threshold && is.na(amd_df$trade_type[i])) {
+    amd_df$trade_type[i] <- "sell"
+    amd_df$costs_proceeds[i] <- current_price*accumulated_shares*1/2
+    accumulated_shares <- accumulated_shares/2
+    total_cost_shares <- avg_purchase_price*accumulated_shares
+  }
+  
+  #Update accumulated shares
+  amd_df$accumulated_shares[i] <- accumulated_shares
+}
+print(amd_df)
 ```
 
 
@@ -111,9 +221,35 @@ After running your algorithm, check if the trades were executed as expected. Cal
 
 ```r
 # Fill your code here and Disucss
+new_total_capital <- 0
+new_total_PL <- 0
+for (i in 1:nrow(amd_df)) {
+  if (!is.na(amd_df$trade_type[i]) && amd_df$trade_type[i] == "buy") {
+    new_total_capital <- new_total_capital + amd_df$costs_proceeds[i]
+  }
+}
+
+#Total profit loss calculation
+new_total_PL <- new_total_capital + amd_df$costs_proceeds[nrow(amd_df)]
+
+#Profit-loss calculation
+new_ROI = (new_total_PL / -new_total_capital) * 100
+
+#Print the results
+cat("ROI:", new_ROI, "\n")
+cat("Total investment:", new_total_capital, "\n")
+cat("Total profit/loss:", new_total_PL, "\n")
 ```
 
-Sample Discussion: On Wednesday, December 6, 2023, AMD CEO Lisa Su discussed a new graphics processor designed for AI servers, with Microsoft and Meta as committed users. The rise in AMD shares on the following Thursday suggests that investors believe in the chipmaker's upward potential and market expectations; My first strategy earned X dollars more than second strategy on this day, therefore providing a better ROI.
+Explanation:
+Over the trading period I used (Jan 2020 - Jan 2021), the initial trading strategy observed an ROI of 40.8% compared to an updated strategy which yielded -28.6%. The primary reason for this is due to the COVID-19 pandemic which choked global supply chains, resulting in AMD's stock price falling to a period-low of 39.12. 
+
+However, after internal restructuring, AMD began to capitalize on the change brought about by the pandemic and the shift towards working from home. This placed heavy demand on computers and other forms of technology, meaning AMD's graphics cards and processors rose in demand. In August 2020, AMD's stock price spiked by $26 dollars, going from 52.58 (2020-07-01) to 85.04 (2020-08-04). Further, a 16% increase in quarter-over-quarter revenue was observed, mainly driven by sales in the Computing and Graphics department. 
+
+The primary reason for the ROI producing a negative value is because the algorithm first sold the shares when the stock price initially rose, however, it would have been more profitable to sell these shares when the economy entered a state of recovery. Further, the algorithm also bought shares at a high price of 90.22, which was not profitable as these shares declined to 82.54 the following week. This sudden change in stock price would have negatively impacted our calculations for average share price.
+
+Ultimately, the flaw with the updated trading algorithm is that it failed to contextually consider the stock prices, causing an inaccurate value for average share price, causing the algorithm to buy stocks at a sub-optimal time.
+
 
 
 
